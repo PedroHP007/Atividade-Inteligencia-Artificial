@@ -1,0 +1,59 @@
+    <!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Classificador de Água</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>Classificador de Água</h1>
+
+        <p>
+            Envie uma foto de um copo de água para verificar
+            se a água está limpa ou suja.
+        </p>
+
+        <form method="POST" enctype="multipart/form-data">
+
+            <input
+                type="file"
+                name="imagem"
+                accept="image/*"
+                required
+            >
+
+            <button type="submit">
+                Classificar imagem
+            </button>
+
+        </form>
+
+        {% if resultado %}
+
+            <div class="resultado">
+
+                <h2>Resultado:</h2>
+
+                {% if resultado == "limpo" %}
+                    <p>💧 A água foi classificada como <strong>LIMPA</strong>.</p>
+                {% else %}
+                    <p>⚠️ A água foi classificada como <strong>SUJA</strong>.</p>
+                {% endif %}
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+</body>
+
+</html>
