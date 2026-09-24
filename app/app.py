@@ -1,96 +1,73 @@
-from flask import Flask, render_template, request
+from pathlib import Path
+
 import joblib
 import numpy as np
+from flask import Flask, render_template, request
 from PIL import Image
 
 app = Flask(__name__)
 
-# Carrega o modelo que treinamos anteriormente
-modelo = joblib.load("../modelo/modelo_final.pkl")
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODEL_PATH = BASE_DIR / "modelo" / "best_classification_model.pkl"
+SCALER_PATH = BASE_DIR / "modelo" / "minmax_scaler.pkl"
+LABEL_ENCODER_PATH = BASE_DIR / "modelo" / "label_encoder.pkl"
+
+modelo = joblib.load(MODEL_PATH)
+scaler = joblib.load(SCALER_PATH)
+label_encoder = joblib.load(LABEL_ENCODER_PATH)
 
 
-def estatisticas_canal(canal):
-    """
-    Calcula, a partir dos pixels de um canal de cor (matriz 2D com
-    valores 0-255), as 5 estatísticas usadas no treinamento:
-    média, desvio padrão, assimetria, curtose e entropia.
+def preprocessar_imagem(imagem):
+    """Ajusta a imagem para o mesmo padrão do treinamento do notebook, mas isolando o objeto da imagem real."""
+    imagem_rgb = imagem.convert("RGB")
 
-    IMPORTANTE: a ordem e a forma de cálculo têm que ser IDÊNTICAS às
-    usadas no treinamento_Final.py, senão o modelo recebe dados fora
-    do padrão que aprendeu.
-    """
-    valores = canal.flatten().astype(np.float64)
+    # Remove o fundo branco/claríssimo para deixar apenas o copo no centro
+    arr = np.asarray(imagem_rgb, dtype=np.uint8)
+    fundo = np.median(arr[0:10, 0:10], axis=(0, 1))
+    dist = np.linalg.norm(arr - fundo, axis=2)
+    mascara = dist > 25
 
-    media = valores.mean()
-    desvio = valores.std()
-    desvio_seguro = desvio if desvio != 0 else 1e-8
+    if mascara.any():
+        ys, xs = np.where(mascara)
+        x0, x1 = xs.min(), xs.max() + 1
+        y0, y1 = ys.min(), ys.max() + 1
+        margem = 10
+        x0 = max(0, x0 - margem)
+        y0 = max(0, y0 - margem)
+        x1 = min(arr.shape[1], x1 + margem)
+        y1 = min(arr.shape[0], y1 + margem)
+        imagem_crop = imagem_rgb.crop((x0, y0, x1, y1))
+    else:
+        imagem_crop = imagem_rgb
 
-    diff = valores - media
-    assimetria = np.mean(diff ** 3) / (desvio_seguro ** 3)
-    curtose = np.mean(diff ** 4) / (desvio_seguro ** 4) - 3
+    # Normaliza para um quadrado e resize final
+    tamanhos = imagem_crop.size
+    lado = max(tamanhos)
+    canvas = Image.new("RGB", (lado, lado), (255, 255, 255))
+    x = (lado - tamanhos[0]) // 2
+    y = (lado - tamanhos[1]) // 2
+    canvas.paste(imagem_crop, (x, y))
+    imagem_final = canvas.resize((16, 16), Image.Resampling.LANCZOS)
 
-    # Entropia calculada a partir do histograma de 256 bins do canal
-    hist, _ = np.histogram(valores, bins=256, range=(0, 256))
-    total = hist.sum()
-    p = hist / total
-    p_seguro = np.where(p > 0, p, 1)
-    entropia = -(p * np.log2(p_seguro)).sum()
-
-    return media, desvio, assimetria, curtose, entropia
-
-
-def extrair_caracteristicas(caminho_imagem):
-    # Abre a imagem e garante que ela esteja no formato RGB
-    imagem = Image.open(caminho_imagem).convert("RGB")
-
-    # Converte a imagem para um array do NumPy
-    imagem = np.array(imagem)
-
-    r_stats = estatisticas_canal(imagem[:, :, 0])
-    g_stats = estatisticas_canal(imagem[:, :, 1])
-    b_stats = estatisticas_canal(imagem[:, :, 2])
-
-    # A ordem tem que ser IDÊNTICA à do treinamento_Final.py:
-    # media_r, desvio_r, assimetria_r, curtose_r, entropia_r,
-    # media_g, desvio_g, assimetria_g, curtose_g, entropia_g,
-    # media_b, desvio_b, assimetria_b, curtose_b, entropia_b
-    caracteristicas = np.array([
-        *r_stats,
-        *g_stats,
-        *b_stats,
-    ])
-
-    return caracteristicas
+    pixels = np.asarray(imagem_final, dtype=np.uint8).reshape(1, -1)
+    return scaler.transform(pixels)
 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-
     resultado = None
 
     if request.method == "POST":
+        arquivo = request.files.get("imagem")
 
-        arquivo = request.files["imagem"]
+        if arquivo and arquivo.filename:
+            imagem = Image.open(arquivo)
+            dados = preprocessar_imagem(imagem)
+            previsao_codificada = modelo.predict(dados)
+            resultado = label_encoder.inverse_transform(previsao_codificada)[0]
 
-        if arquivo:
-
-            caracteristicas = extrair_caracteristicas(
-                arquivo
-            )
-
-            # Transforma em uma linha com 15 características
-            caracteristicas = caracteristicas.reshape(1, -1)
-
-            # Faz a previsão
-            previsao = modelo.predict(caracteristicas)
-
-            resultado = previsao[0]
-
-    return render_template(
-        "index.html",
-        resultado=resultado
-    )
+    return render_template("index.html", resultado=resultado)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=False)

@@ -1,48 +1,102 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: Arial, sans-serif;
-    background: #f2f2f2;
+    background: linear-gradient(135deg, #e0f7ff, #f5fbff);
     margin: 0;
     padding: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .container {
-    width: 500px;
-    margin: 100px auto;
+    width: min(92vw, 620px);
     background: white;
-    padding: 40px;
+    padding: 32px 28px;
+    border-radius: 18px;
+    box-shadow: 0 18px 40px rgba(26, 66, 110, 0.12);
     text-align: center;
-    border-radius: 10px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
 }
 
 h1 {
-    margin-bottom: 10px;
+    margin: 0 0 12px;
+    color: #0a3655;
+    font-size: 2rem;
 }
 
-p {
-    color: #555;
+.subtitulo {
+    color: #5a6d7d;
+    margin-bottom: 24px;
+    line-height: 1.5;
 }
 
-input {
-    margin: 20px 0;
+.formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+}
+
+.upload-label {
+    display: inline-block;
+    padding: 12px 18px;
+    background: #eaf5ff;
+    border: 1px dashed #7baed6;
+    border-radius: 10px;
+    color: #0d4b77;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+input[type="file"] {
+    display: none;
 }
 
 button {
-    padding: 12px 20px;
+    padding: 12px 22px;
     border: none;
-    border-radius: 6px;
-    background: #222;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1787d6, #0d5da8);
     color: white;
     cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 button:hover {
-    background: #444;
+    transform: translateY(-1px);
+    opacity: 0.96;
 }
 
 .resultado {
-    margin-top: 30px;
-    padding: 20px;
-    background: #f1f1f1;
-    border-radius: 8px;
+    margin-top: 26px;
+    padding: 20px 18px;
+    border-radius: 12px;
+    text-align: left;
+}
+
+.resultado.limpo {
+    background: #eafaf2;
+    border: 1px solid #92d7ad;
+}
+
+.resultado.sujo {
+    background: #fff3f1;
+    border: 1px solid #f6b0a7;
+}
+
+.resultado h2 {
+    margin: 0 0 10px;
+    font-size: 1.2rem;
+}
+
+.resultado p {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #233b4a;
 }
